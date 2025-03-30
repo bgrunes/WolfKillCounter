@@ -1,0 +1,13 @@
+{
+    "type": "code",
+    "modid": "wolfkillcounter",
+    "name": "Wolf Kill Counter Mod",
+    "authors": [
+        "Deltamus"
+    ],
+    "description": "Server-side leaderboard that lists the total wolf kills of the top 5 players.",
+    "version": "1.0.0",
+    "dependencies": {
+        "game": ""
+    }
+}
