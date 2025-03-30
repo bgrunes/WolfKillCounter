@@ -1,5 +1,6 @@
 {
     "type": "code",
+    "side" :  "server",
     "modid": "wolfkillcounter",
     "name": "Wolf Kill Counter Mod",
     "authors": [
