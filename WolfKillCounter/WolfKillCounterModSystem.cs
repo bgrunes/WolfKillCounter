@@ -153,7 +153,7 @@ namespace WolfKillCounter
 
             foreach (var pair in sortedDict) 
             {
-                list += $"{position}. {pair.Key}: {pair.Value} kills\n";
+                list += $"{position++}. {pair.Key}: {pair.Value} kills\n";
             }
 
             list += $"Total Wolf Kills: {totalWolfKillCount}\n";
