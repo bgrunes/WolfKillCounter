@@ -34,7 +34,7 @@ namespace WolfKillCounter
         // Useful for registering block/entity classes on both sides
         public override void Start(ICoreAPI api)
         {
-            Mod.Logger.Notification("Hello from template mod: " + api.Side);
+            Mod.Logger.Notification("Wolf Kill Counter - " + api.Side);
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -42,14 +42,19 @@ namespace WolfKillCounter
             sapi = api;
             LoadWolfKillData();
 
-            Mod.Logger.Notification("Hello from template mod server side: " + Lang.Get("wolfkillcounter:hello"));
+            Mod.Logger.Notification(Lang.Get("wolfkillcounter:version"));
 
             // Register command with API
             api.ChatCommands.Create("listWolfKills")
                 .WithDescription("List the top 5 wolf killers")
                 .RequiresPrivilege(Privilege.chat)
                 .WithAlias("lwk")
-                .HandleWith(listWolfKills);
+                .HandleWith(ListWolfKills);
+
+            api.ChatCommands.Create("resetWolfLeaderboard")
+                .WithDescription("Resets wolf leaderboard without affecting total kills.")
+                .RequiresPrivilege(Privilege.controlserver)
+                .HandleWith(args => ResetLeaderboardCommand(args, sapi));
 
             // Add function handler to trigger (function call) when an entity dies.
             api.Event.OnEntityDeath += OnEntityDeath;
@@ -116,17 +121,26 @@ namespace WolfKillCounter
         }
 
         // Command function to print the Wolf Kills Leaderboard
-        private TextCommandResult listWolfKills(TextCommandCallingArgs args)
+        private TextCommandResult ListWolfKills(TextCommandCallingArgs args)
         {
             string playerName = args.Caller.Player.PlayerName;
             Mod.Logger.Notification($"{playerName}: Printing Wolf Kill List Top 5");
             Mod.Logger.Notification(wolfKillCount.ToString());
 
-            return TextCommandResult.Success(printList());
+            return TextCommandResult.Success(PrintList());
+        }
+
+        // Command function to reset the Wolf Kills Leaderboard
+        private TextCommandResult ResetLeaderboardCommand(TextCommandCallingArgs args, ICoreAPI api)
+        {
+            wolfKillCount.Clear();
+            SaveWolfKillData();
+
+            return TextCommandResult.Success("Wolf kill leaderboard has been reset. Total kill count remains unchanged.");
         }
 
         // Helper function to create the list string by sorting the dictionary and iterating through the top 5 elements in sortedDict.
-        private string printList()
+        private string PrintList()
         {
             string list = $"Wolf Kill Leaderboard\n";
             list +=        "--------------------------\n";
