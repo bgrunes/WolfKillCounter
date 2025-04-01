@@ -42,8 +42,6 @@ namespace WolfKillCounter
             sapi = api;
             LoadWolfKillData();
 
-            Mod.Logger.Notification(Lang.Get("wolfkillcounter:version"));
-
             // Register command with API
             api.ChatCommands.Create("listWolfKills")
                 .WithDescription("List the top 5 wolf killers")
@@ -51,6 +49,7 @@ namespace WolfKillCounter
                 .WithAlias("lwk")
                 .HandleWith(ListWolfKills);
 
+            // Reset Leaderboard command
             api.ChatCommands.Create("resetWolfLeaderboard")
                 .WithDescription("Resets wolf leaderboard without affecting total kills.")
                 .RequiresPrivilege(Privilege.controlserver)
@@ -92,6 +91,7 @@ namespace WolfKillCounter
             }
         }
 
+        // Load the saved data from the json file
         private void LoadWolfKillData()
         {
             if (sapi.LoadModConfig<WolfKillData>("wolfkills.json") is WolfKillData data)
@@ -108,6 +108,7 @@ namespace WolfKillCounter
             }
         }
 
+        // Save the current kill data to the json file
         private void SaveWolfKillData()
         {
             var data = new WolfKillData()
@@ -127,7 +128,7 @@ namespace WolfKillCounter
             Mod.Logger.Notification($"{playerName}: Printing Wolf Kill List Top 5");
             Mod.Logger.Notification(wolfKillCount.ToString());
 
-            return TextCommandResult.Success(PrintList());
+            return TextCommandResult.Success(PrintList(playerName));
         }
 
         // Command function to reset the Wolf Kills Leaderboard
@@ -140,10 +141,10 @@ namespace WolfKillCounter
         }
 
         // Helper function to create the list string by sorting the dictionary and iterating through the top 5 elements in sortedDict.
-        private string PrintList()
+        private string PrintList(string playerName)
         {
-            string list = $"Wolf Kill Leaderboard\n";
-            list +=        "--------------------------\n";
+            string list = $"WOLF EXTERMINATION LEADERBOARD\n";
+            list +=        "=================================\n";
 
             int position = 1;
             var sortedDict = wolfKillCount
@@ -156,7 +157,10 @@ namespace WolfKillCounter
                 list += $"{position++}. {pair.Key}: {pair.Value} kills\n";
             }
 
+            list += "\n--------------------------------------------------------\n";
             list += $"Total Wolf Kills: {totalWolfKillCount}\n";
+            list += $"Your Kills: {(wolfKillCount.ContainsKey(playerName) ? wolfKillCount[playerName] : 0)}\n";
+            list += "=================================\n";
             return list;
         }
     }
