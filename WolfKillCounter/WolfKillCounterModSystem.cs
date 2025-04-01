@@ -15,6 +15,9 @@ namespace WolfKillCounter
         // Players and their wolf kill counts
         public Dictionary<string, int> KillCounts { get; set; } = new Dictionary<string, int>();
 
+        // Leaderboard of players and their wolf kill counts
+        public Dictionary<string, int> Leaderboard { get; set; } = new Dictionary<string, int>();
+
         // Total wolf kills by all players
         public int TotalKills { get; set; } = 0;
     }
@@ -26,6 +29,7 @@ namespace WolfKillCounter
 
         // List of players and their total wolf kills from the first startup of this mod.
         Dictionary<string, int> wolfKillCount = new Dictionary<string, int>();
+        Dictionary<string, int> currentLeaderboard = new Dictionary<string, int>();
         int totalWolfKillCount = 0;
         
 
@@ -83,11 +87,14 @@ namespace WolfKillCounter
                 if (wolfKillCount.ContainsKey(playerName))
                 {
                     wolfKillCount[playerName]++;
+                    currentLeaderboard[playerName] = wolfKillCount[playerName];
                 }
                 else if (playerName != null)
                 {
                     wolfKillCount.Add(playerName, 1);
+                    currentLeaderboard.Add(playerName, 1);
                 }
+
             }
         }
 
@@ -114,6 +121,7 @@ namespace WolfKillCounter
             var data = new WolfKillData()
             {
                 KillCounts = wolfKillCount,
+                Leaderboard = currentLeaderboard,
                 TotalKills = totalWolfKillCount
             };
 
@@ -134,7 +142,7 @@ namespace WolfKillCounter
         // Command function to reset the Wolf Kills Leaderboard
         private TextCommandResult ResetLeaderboardCommand(TextCommandCallingArgs args, ICoreAPI api)
         {
-            wolfKillCount.Clear();
+            currentLeaderboard.Clear();
             SaveWolfKillData();
 
             return TextCommandResult.Success("Wolf kill leaderboard has been reset. Total kill count remains unchanged.");
@@ -147,12 +155,9 @@ namespace WolfKillCounter
             list +=        "=================================\n";
 
             int position = 1;
-            var sortedDict = wolfKillCount
-                .OrderByDescending(pair => pair.Value)
-                .Take(5)
-                .ToList();
+            var topFive = GetTopFive(currentLeaderboard);
 
-            foreach (var pair in sortedDict) 
+            foreach (var pair in topFive) 
             {
                 list += $"{position++}. {pair.Key}: {pair.Value} kills\n";
             }
@@ -162,6 +167,12 @@ namespace WolfKillCounter
             list += $"Your Kills: {(wolfKillCount.ContainsKey(playerName) ? wolfKillCount[playerName] : 0)}\n";
             list += "=================================\n";
             return list;
+        }
+
+        // Helper function to get the top 5 players from the current leaderboard
+        private Dictionary<string, int> GetTopFive(Dictionary<string, int> leaderboard)
+        {
+            return leaderboard.OrderByDescending(x => x.Value).Take(5).ToDictionary(x => x.Key, x => x.Value);
         }
     }
 }
