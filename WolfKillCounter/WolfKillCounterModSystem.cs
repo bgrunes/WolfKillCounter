@@ -196,9 +196,9 @@ namespace WolfKillCounter
                 {
                     System.IO.File.Delete(SaveFilePath);
                 }
-                catch (Exception error) 
+                catch (Exception error)
                 {
-                    sapi.Logger.Error($"[WolfKillCounter] - Error: File not deleted! Make sure the JSON file is manually deleted.\n{error}");
+                    sapi.Logger.Error($"[WolfKillCounter] - Error: File not deleted! Make sure the JSON file is manually deleted.\n");
                 }
                 sapi.Logger.Notification("[WolfKillCounter]: Deleted old json file for SaveData Migration.");
             }
@@ -254,7 +254,7 @@ namespace WolfKillCounter
             // If the player has not died to a wolf yet, no KD.
             if (KDlist[2] == 0)
             {
-                return "0.00";
+                return "∞";
             }
             kd =(double) (KDlist[0] / KDlist[2]);
             return System.String.Format("{0:F2}", kd);
