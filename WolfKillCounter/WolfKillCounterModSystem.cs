@@ -54,6 +54,7 @@ namespace WolfKillCounter
         {
             sapi = api;
             LoadWolfKillData();
+            LoadLeaderboard();
 
             // Register command with API
             api.ChatCommands.Create("listWolfKills")
@@ -96,8 +97,15 @@ namespace WolfKillCounter
                     playerName = causePlayer.Player.PlayerName;
                 if (wolfKillCount.ContainsKey(playerName))
                 {
-                    wolfKillCount[playerName][0]++;
-                    currentLeaderboard[playerName] = wolfKillCount[playerName][0];
+                    wolfKillCount[playerName]++;
+                    if (currentLeaderboard.ContainsKey(playerName))
+                    {
+                        currentLeaderboard[playerName]++;
+                    }
+                    else
+                    {
+                        currentLeaderboard.Add(playerName, 1);
+                    }
                 }
                 else if (playerName != null)
                 {
@@ -235,12 +243,11 @@ namespace WolfKillCounter
         private string PrintList(string playerName)
         {
             string list = $"WOLF EXTERMINATION LEADERBOARD\n";
-            list +=        "=================================\n";
+            list += "=================================\n";
 
             int position = 1;
-            var topFive = GetTopFive(currentLeaderboard);
 
-            foreach (var pair in topFive) 
+            foreach (var pair in GetTopFive(currentLeaderboard))
             {
                 list += $"{position++}. {pair.Key}: {pair.Value} kills\n";
             }
@@ -256,6 +263,20 @@ namespace WolfKillCounter
         private Dictionary<string, int> GetTopFive(Dictionary<string, int> leaderboard)
         {
             return leaderboard.OrderByDescending(x => x.Value).Take(5).ToDictionary(x => x.Key, x => x.Value);
+        }
+
+        private void LoadLeaderboard()
+        {
+            if (sapi.LoadModConfig<WolfKillData>("wolfkills.json") is WolfKillData data)
+            {
+                currentLeaderboard = data.Leaderboard ?? wolfKillCount.OrderByDescending(x => x.Value).Take(5).ToDictionary(x => x.Key, x => x.Value);
+                sapi.Logger.Notification("WolfKillCounter: Loaded saved leaderboard data.");
+            }
+            else
+            {
+                currentLeaderboard = new Dictionary<string, int>();
+                sapi.Logger.Notification("WolfKillCounter: No existing leaderboard data found. Starting fresh.");
+            }
         }
 
         // Function to check if total server kills reached a certain point

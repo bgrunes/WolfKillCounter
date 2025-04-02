@@ -7,7 +7,7 @@
         "Deltamus"
     ],
     "description": "Server-side leaderboard that lists the total wolf kills of the top 5 players.",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "dependencies": {
         "game": "1.20.7"
     }
