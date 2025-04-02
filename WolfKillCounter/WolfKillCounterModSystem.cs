@@ -60,6 +60,8 @@ namespace WolfKillCounter
             sapi.Logger.Notification($"Wolf Kill Counter: {SaveFilePath}");
             LoadWolfKillData();
             LoadLeaderboard();
+            serverKillGoal = 10;
+            totalWolfKillCount = 9;
 
             // List Leaderboard Command
             api.ChatCommands.Create("listWolfKills")
@@ -107,11 +109,15 @@ namespace WolfKillCounter
             {
                 totalWolfKillCount++;
                 string playerName = null;
+                EntityPlayer sourcePlayer = null;
                 Console.WriteLine(playerName);
 
                 // Check for source of killer (should be a player), get their player name and increment their kill count.
                 if (source?.SourceEntity is EntityPlayer player)
+                {
                     playerName = player.Player.PlayerName;
+                    sourcePlayer = player;
+                }
                 else if (source?.CauseEntity is EntityPlayer causePlayer)
                     playerName = causePlayer.Player.PlayerName;
                 if (wolfKillCount.ContainsKey(playerName))
@@ -135,7 +141,7 @@ namespace WolfKillCounter
                 // Check if the server kill goal has been reached and broadcast a message to all players.
                 if (totalWolfKillCount == serverKillGoal)
                 {
-                    serverChannel.BroadcastPacket(ServerKillGoal(serverKillGoal * 2));
+                    BroadcastMessage(ServerKillGoal(serverKillGoal * 2));
                     serverKillGoal *= 2;
                 }
 
@@ -143,7 +149,7 @@ namespace WolfKillCounter
                 if (wolfKillCount[playerName][0] == wolfKillCount[playerName][1])
                 {
                     int newGoal = CalculateGoal(wolfKillCount[playerName][0]);
-                    serverChannel.BroadcastPacket(PlayerKillGoal(playerName, newGoal));
+                    BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer.Player);
                     wolfKillCount[playerName][1] *= 2;
                 }
             }
@@ -326,8 +332,8 @@ namespace WolfKillCounter
         {
             string message = " *** WOLF SLAYERS UNITE! ***\n";
             message += "  -----------------------------------\n";
-            message += $"| {serverKillGoal} reached!          |\n";
-            message +=  "| Server Pack Triumphs!              |\n";
+            message += $"| {serverKillGoal} reached!            |\n";
+            message +=  "| Server Pack Triumphs!             |\n";
             message += $"| New server goal: {newGoal} kills!  |\n";
             message += "  -----------------------------------\n";
 
@@ -343,6 +349,25 @@ namespace WolfKillCounter
             message += "  ---------------------------------------------\n";
 
             return message;
+        }
+
+        private void BroadcastMessage(string message)
+        {
+            sapi.SendMessageToGroup(
+                GlobalConstants.GeneralChatGroup,
+                message,
+                EnumChatType.Notification
+            );
+        }
+
+        private void BroadcastMessage(string message, IPlayer player)
+        {
+            sapi.SendMessage(
+                player,
+                0,
+                message,
+                EnumChatType.OwnMessage
+            );
         }
     }
 }
