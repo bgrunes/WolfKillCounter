@@ -1,4 +1,6 @@
 ﻿using Microsoft.Win32.SafeHandles;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -123,55 +125,67 @@ namespace WolfKillCounter
         // Load the saved data from the json file
         private void LoadWolfKillData()
         {
-            var rawData = sapi.LoadModConfig<WolfKillData>("wolfkills.json");
+            // Read raw JSON from the file
+            string rawJson = System.IO.File.ReadAllText(SaveFilePath);
+            var parsedJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(rawJson);
 
-            // If data is found, load it into the dictionaries, otherwise start fresh. Reformat old data if necessary.
-            if (rawData != null)
+            // Initialize data structures
+            wolfKillCount = new Dictionary<string, int[]>();
+            currentLeaderboard = new Dictionary<string, int>();
+            totalWolfKillCount = 0;
+            serverKillGoal = 100;
+
+            // Load TotalKills and ServerKillGoal
+            if (parsedJson.TryGetValue("TotalKills", out object totalKillsObj) && totalKillsObj is long tk)
             {
-                wolfKillCount = new Dictionary<string, int[]>();
-                totalWolfKillCount = rawData.TotalKills;
-                currentLeaderboard = rawData.Leaderboard ?? new Dictionary<string, int>();
-                serverKillGoal = rawData.ServerKillGoal > 0 ? rawData.ServerKillGoal : 100;
+                totalWolfKillCount = (int)tk;
+            }
 
-                // If there are kills, load them into the dictionary using the new format.
-                if (rawData.KillCounts != null)
-                {
-                    foreach (var entry in rawData.KillCounts)
-                    {
-                        int kills = entry.Value.Length > 0 ? entry.Value[0] : 0;
-                        int goal = entry.Value.Length > 1 ? entry.Value[1] : 50;
-                        int adjustedGoal = CalculateGoal(kills);
-                        wolfKillCount[entry.Key] = new int[] { kills, adjustedGoal > goal ? adjustedGoal : goal };
-                    }
-                    sapi.Logger.Notification("WolfKillCounter: Loaded and adjusted kill data.");
-                }
-                // If the leaderboard data is found, load it into the current leaderboard dictionary, reformatting if necessary.
-                else if (rawData.Leaderboard != null)
-                {
-                    sapi.Logger.Notification("WolfKillCounter: Migrating old format...");
-                    foreach (var entry in rawData.Leaderboard)
-                    {
-                        int kills = entry.Value;
-                        wolfKillCount[entry.Key] = new int[] { kills, CalculateGoal(kills) };
-                        currentLeaderboard[entry.Key] = kills;
-                    }
-                }
+            if (parsedJson.TryGetValue("ServerKillGoal", out object goalObj) && goalObj is long goal)
+            {
+                serverKillGoal = (int)goal;
+            }
 
-                // Verify that all players in the leaderboard are in the kill count dictionary.
-                foreach (var entry in wolfKillCount)
+            // Load Leaderboard
+            if (parsedJson.TryGetValue("Leaderboard", out object leaderboardObj))
+            {
+                var leaderboardJson = leaderboardObj as JObject;
+                if (leaderboardJson != null)
                 {
-                    if (!currentLeaderboard.ContainsKey(entry.Key))
-                        currentLeaderboard[entry.Key] = entry.Value[0];
+                    foreach (var kvp in leaderboardJson)
+                    {
+                        currentLeaderboard[kvp.Key] = kvp.Value.ToObject<int>();
+                    }
                 }
             }
-            // If no data is found, start fresh.
-            else
+
+            // Load KillCounts with backward compatibility for the old format
+            if (parsedJson.TryGetValue("KillCounts", out object killCountsObj))
             {
-                wolfKillCount = new Dictionary<string, int[]>();
-                totalWolfKillCount = 0;
-                currentLeaderboard = new Dictionary<string, int>();
-                serverKillGoal = 100;
-                sapi.Logger.Notification("WolfKillCounter: No existing data found. Starting fresh.");
+                var killCountsJson = killCountsObj as JObject;
+                if (killCountsJson != null)
+                {
+                    foreach (var kvp in killCountsJson)
+                    {
+                        // Handle old format (just an integer for kills)
+                        if (kvp.Value.Type == JTokenType.Integer)
+                        {
+                            int kills = kvp.Value.ToObject<int>();
+                            int nextGoal = CalculateGoal(kills);  // Calculate next goal for the player
+                            wolfKillCount[kvp.Key] = new int[] { kills, nextGoal };
+                        }
+                        // Handle the new format (array with kills and goal)
+                        else if (kvp.Value.Type == JTokenType.Array)
+                        {
+                            int[] values = kvp.Value.ToObject<int[]>();
+                            int kills = values.Length > 0 ? values[0] : 0;
+                            int nextGoal = values.Length > 1 ? values[1] : CalculateGoal(kills);
+                            wolfKillCount[kvp.Key] = new int[] { kills, nextGoal };
+                        }
+                    }
+
+                    sapi.Logger.Notification("WolfKillCounter: KillCounts parsed and migrated if needed.");
+                }
             }
         }
            
