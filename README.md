@@ -15,3 +15,7 @@ Leaderboard Reset: Admins can reset the leaderboard without affecting the total 
 */listWolfKills or /lwk: Displays the top 5 players with the highest wolf kill counts and the total number of wolves killed.
 
 */resetWolfLeaderboard: Resets the leaderboard while maintaining the total wolf kill count (admin-only).
+
+*/serverkillgoal or /skg: Displays the server's kill goal and prints the total server kills.
+
+*/playerkillgoal or /pkg: Displays the player's kill goal and prints the player's total kills.
