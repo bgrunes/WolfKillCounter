@@ -134,7 +134,7 @@ namespace WolfKillCounter
                 }
                 else if (playerName != null)
                 {
-                    wolfKillCount.Add(playerName, new int[]{ 1, 50 });
+                    wolfKillCount.Add(playerName, new int[]{ 1, 50, 0 });
                     currentLeaderboard.Add(playerName, 1);
                 }
 
@@ -151,6 +151,17 @@ namespace WolfKillCounter
                     int newGoal = CalculateGoal(wolfKillCount[playerName][0]);
                     BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer.Player);
                     wolfKillCount[playerName][1] *= 2;
+                }
+            }
+            else if (entity.Code.Path == "player")
+            {
+                if ((source.SourceEntity.Code.Path.Contains("wolf") || source.CauseEntity.Code.Path.Contains("wolf")) && entity is EntityPlayer player)
+                {
+                    string playerName = player.Player.PlayerName;
+
+                    wolfKillCount[playerName][2]++;
+                    Mod.Logger.Notification("" + wolfKillCount[playerName][2]);
+                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
                 }
             }
         }
@@ -174,7 +185,7 @@ namespace WolfKillCounter
                 {
                     foreach (var kvp in data.KillCounts)
                     {
-                        wolfKillCount.Add(kvp.Key, new int[] { kvp.Value, CalculateGoal((int)kvp.Value)});
+                        wolfKillCount.Add(kvp.Key, new int[] { kvp.Value, CalculateGoal((int)kvp.Value), 0});
                     }
                 }
 
@@ -233,6 +244,20 @@ namespace WolfKillCounter
             const int defaultGoal = 50;
             // Round up to the next multiple of 50 greater than kills
             return ((kills + defaultGoal - 1) / defaultGoal) * defaultGoal;
+        }
+
+        // Helper function to calculate the kill/death ratio of a player
+        private string CalculateKD(int[] KDlist)
+        {
+            double kd = 0.0;
+
+            // If the player has not died to a wolf yet, no KD.
+            if (KDlist[2] == 0)
+            {
+                return "0.00";
+            }
+            kd =(double) (KDlist[0] / KDlist[2]);
+            return System.String.Format("{0:F2}", kd);
         }
 
         // Save the current kill data to the json file
@@ -294,12 +319,14 @@ namespace WolfKillCounter
 
             foreach (var pair in GetTopFive(currentLeaderboard))
             {
-                list += $"{position++}. {pair.Key}: {pair.Value} kills\n";
+                list += $"{position++}. {pair.Key}: {pair.Value} kills, {wolfKillCount[pair.Key][2]} Deaths, KD: {CalculateKD(wolfKillCount[pair.Key])} \n";
             }
 
             list += "\n--------------------------------------------------------\n";
             list += $"Total Wolf Kills: {totalWolfKillCount}\n";
             list += $"Your Kills: {(wolfKillCount.ContainsKey(playerName) ? wolfKillCount[playerName][0] : 0)}\n";
+            list += $"Deaths by Wolf: {wolfKillCount[playerName][2]}\n";
+            list += $"KD: {CalculateKD(wolfKillCount[playerName])}\n";
             list += "=================================\n";
             return list;
         }
