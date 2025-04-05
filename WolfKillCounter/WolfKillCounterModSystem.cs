@@ -192,6 +192,17 @@ namespace WolfKillCounter
             {
                 string playerName = player.Player.PlayerName;
 
+                    if (wolfKillCount.ContainsKey(playerName))
+                    {
+                        wolfKillCount[playerName].Deaths++;
+                    }
+                    else
+                    {
+                        wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 1 });
+                    }
+                    
+                    Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
+                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
                 // Ensure the player is in the wolfKillCount dictionary
                 if (!wolfKillCount.ContainsKey(playerName))
                 {
