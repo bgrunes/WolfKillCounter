@@ -78,7 +78,6 @@ namespace WolfKillCounter
             Mod.Logger.Notification(": " + Lang.Get("wolfkillcounter:version"));
             sapi = api;
 
-            sapi.Logger.Notification($"Wolf Kill Counter: {SaveFilePath}");
             LoadWolfKillData();
             LoadLeaderboard();
             serverKillGoal = 10;
@@ -192,17 +191,19 @@ namespace WolfKillCounter
             {
                 string playerName = player.Player.PlayerName;
 
-                    if (wolfKillCount.ContainsKey(playerName))
-                    {
-                        wolfKillCount[playerName].Deaths++;
-                    }
-                    else
-                    {
-                        wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 1 });
-                    }
+                // Check if this player exists in the wolfKillCount dictionary
+                if (wolfKillCount.ContainsKey(playerName))
+                {
+                    wolfKillCount[playerName].Deaths++;
+                }
+                else
+                {
+                    wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 1 });
+                }
                     
-                    Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
-                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
+                Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
+                Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
+                Mod.Logger.Notification($"Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
                 // Ensure the player is in the wolfKillCount dictionary
                 if (!wolfKillCount.ContainsKey(playerName))
                 {
