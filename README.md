@@ -11,6 +11,8 @@ Persistent Statistics: Wolf kill data is automatically saved and loaded, ensurin
 
 Leaderboard Reset: Admins can reset the leaderboard without affecting the total kill count.
 
+Goal System: Players have personal kill goals that increase as they defeat more wolves, with notifications when goals are reached. The server also has a global kill goal, doubling each time it’s achieved.
+
 # Commands:
 */listWolfKills or /lwk: Displays the top 5 players with the highest wolf kill counts and the total number of wolves killed.
 
