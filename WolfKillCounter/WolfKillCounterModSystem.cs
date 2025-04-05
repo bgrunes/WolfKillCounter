@@ -191,7 +191,7 @@ namespace WolfKillCounter
         private void LoadWolfKillData()
         {
             // If the old json file exists, get the data and switch to new saving format
-            if (sapi.GetOrCreateDataPath("wolfkills.json") != null) 
+            if (sapi.LoadModConfig("wolfkills.json") != null) 
             {
                 // Get the file data
                 var data = sapi.LoadModConfig<WolfKillData>("wolfkills.json");
