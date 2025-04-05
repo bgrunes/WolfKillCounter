@@ -12,30 +12,44 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Vintagestory.API.Util;
+using ProtoBuf;
 
 namespace WolfKillCounter
 {
-    
+
+    [ProtoContract]
     public class KillCountData
     {
+        [ProtoMember(1)]
         public int Kills { get; set; } = 0;
+
+        [ProtoMember(2)]
         public int Goal { get; set; } = 50;
+
+        [ProtoMember(3)]
         public int Deaths { get; set; } = 0;
     }
+
+    [ProtoContract]
     public class WolfKillData
     {
         // Players and their wolf kill counts
+        [ProtoMember(1)]
         public Dictionary<string, int> KillCounts { get; set; } = new Dictionary<string, int>();
 
         // Old Dictionary format, REFORMAT USE ONLY
+        [ProtoMember(2)]
         public Dictionary<string, KillCountData> NewKillCounts { get; set; } = new Dictionary<string, KillCountData>();
 
         // Leaderboard of players and their wolf kill counts
+        [ProtoMember(3)]
         public Dictionary<string, int> Leaderboard { get; set; } = new Dictionary<string, int>();
 
         // Total wolf kills by all players
+        [ProtoMember(4)]
         public int TotalKills { get; set; } = 0;
 
+        [ProtoMember(5)]
         public int ServerKillGoal { get; set; } = 100;
     }
     public class WolfKillCounterModSystem : ModSystem
@@ -271,16 +285,23 @@ namespace WolfKillCounter
         // Save the current kill data to the json file
         private void SaveWolfKillData()
         {
-            var data = new WolfKillData()
+            try
             {
-                NewKillCounts = wolfKillCount,
-                Leaderboard = currentLeaderboard,
-                TotalKills = totalWolfKillCount,
-                ServerKillGoal = serverKillGoal
-            };
+                var data = new WolfKillData()
+                {
+                    NewKillCounts = wolfKillCount,
+                    Leaderboard = currentLeaderboard,
+                    TotalKills = totalWolfKillCount,
+                    ServerKillGoal = serverKillGoal
+                };
 
-            sapi.WorldManager.SaveGame.StoreData("wolfkilldata", data);
-            sapi.Logger.Notification("WolfKillCounter: Saved kill data.");
+                sapi.WorldManager.SaveGame.StoreData("wolfkilldata", data);
+                sapi.Logger.Notification("WolfKillCounter: Saved kill data.");
+            }
+            catch (Exception ex)
+            {
+                sapi.Logger.Error($"WolfKillCounter: Failed to save kill data. Error: {ex.Message}\nStackTrace: {ex.StackTrace}");
+            }
         }
 
         // Command function to print the Wolf Kills Leaderboard
