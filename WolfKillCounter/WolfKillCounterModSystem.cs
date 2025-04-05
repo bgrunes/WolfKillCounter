@@ -125,13 +125,21 @@ namespace WolfKillCounter
         // function handler to catch entity death event.
         private void OnEntityDeath(Entity entity, DamageSource source)
         {
-            //Console.WriteLine(entity.Code.Path);
+            // Debug logging for DamageSource
+            if (source == null)
+            {
+                Mod.Logger.Debug("DamageSource is null for entity death.");
+            }
+            else
+            {
+                Mod.Logger.Debug($"DamageSource: SourceEntity={source.SourceEntity?.Code?.Path ?? "null"}, CauseEntity={source.CauseEntity?.Code?.Path ?? "null"}");
+            }
+
             if (entity.Code.Path.Contains("wolf"))
             {
                 totalWolfKillCount++;
                 string playerName = null;
                 EntityPlayer sourcePlayer = null;
-                Console.WriteLine(playerName);
 
                 // Check for source of killer (should be a player), get their player name and increment their kill count.
                 if (source?.SourceEntity is EntityPlayer player)
@@ -140,49 +148,65 @@ namespace WolfKillCounter
                     sourcePlayer = player;
                 }
                 else if (source?.CauseEntity is EntityPlayer causePlayer)
-                    playerName = causePlayer.Player.PlayerName;
-                if (wolfKillCount.ContainsKey(playerName))
                 {
-                    wolfKillCount[playerName].Kills++;
-                    if (currentLeaderboard.ContainsKey(playerName))
+                    playerName = causePlayer.Player.PlayerName;
+                }
+
+                if (playerName != null)
+                {
+                    if (wolfKillCount.ContainsKey(playerName))
                     {
-                        currentLeaderboard[playerName]++;
+                        wolfKillCount[playerName].Kills++;
+                        if (currentLeaderboard.ContainsKey(playerName))
+                        {
+                            currentLeaderboard[playerName]++;
+                        }
+                        else
+                        {
+                            currentLeaderboard.Add(playerName, 1);
+                        }
                     }
                     else
                     {
+                        wolfKillCount.Add(playerName, new KillCountData { Kills = 1, Goal = 50, Deaths = 0 });
                         currentLeaderboard.Add(playerName, 1);
                     }
-                }
-                else if (playerName != null)
-                {
-                    wolfKillCount.Add(playerName, new KillCountData{ Kills = 1, Goal = 50, Deaths = 0 });
-                    currentLeaderboard.Add(playerName, 1);
-                }
 
-                // Check if the server kill goal has been reached and broadcast a message to all players.
-                if (totalWolfKillCount == serverKillGoal)
-                {
-                    BroadcastMessage(ServerKillGoal(serverKillGoal * 2));
-                    serverKillGoal *= 2;
-                }
+                    // Check if the server kill goal has been reached and broadcast a message to all players.
+                    if (totalWolfKillCount == serverKillGoal)
+                    {
+                        BroadcastMessage(ServerKillGoal(serverKillGoal * 2));
+                        serverKillGoal *= 2;
+                    }
 
-                // Check if the player has reached their personal kill goal and broadcast a message to all players.
-                if (wolfKillCount[playerName].Kills == wolfKillCount[playerName].Goal)
-                {
-                    int newGoal = CalculateGoal(wolfKillCount[playerName].Goal);
-                    BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer.Player);
-                    wolfKillCount[playerName].Goal *= 2;
+                    // Check if the player has reached their personal kill goal and broadcast a message to all players.
+                    if (wolfKillCount[playerName].Kills == wolfKillCount[playerName].Goal)
+                    {
+                        int newGoal = CalculateGoal(wolfKillCount[playerName].Goal);
+                        BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer?.Player);
+                        wolfKillCount[playerName].Goal *= 2;
+                    }
                 }
             }
-            else if (entity.Code.Path == "player")
+            else if (entity.Code.Path == "player" && entity is EntityPlayer player)
             {
-                if ((source.SourceEntity.Code.Path.Contains("wolf") || source.CauseEntity.Code.Path.Contains("wolf")) && entity is EntityPlayer player)
-                {
-                    string playerName = player.Player.PlayerName;
+                string playerName = player.Player.PlayerName;
 
+                // Ensure the player is in the wolfKillCount dictionary
+                if (!wolfKillCount.ContainsKey(playerName))
+                {
+                    wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
+                }
+
+                // Check if the death was caused by a wolf
+                bool diedToWolf = source != null &&
+                                  ((source.SourceEntity != null && source.SourceEntity.Code.Path.Contains("wolf")) ||
+                                   (source.CauseEntity != null && source.CauseEntity.Code.Path.Contains("wolf")));
+
+                if (diedToWolf)
+                {
                     wolfKillCount[playerName].Deaths++;
-                    Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
-                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
+                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
                 }
             }
         }
@@ -319,6 +343,8 @@ namespace WolfKillCounter
             currentLeaderboard.Clear();
             SaveWolfKillData();
 
+            Mod.Logger.Notification("[WolfKillCounter] Resetting leaderboard.");
+
             return TextCommandResult.Success("Wolf kill leaderboard has been reset. Total kill count remains unchanged.");
         }
 
@@ -332,6 +358,11 @@ namespace WolfKillCounter
         {
             string playerName = args.Caller.Player.PlayerName;
             Mod.Logger.Notification($"{playerName}: Printing personal kill goal.");
+
+            if (!wolfKillCount.ContainsKey(playerName))
+            {
+                wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
+            }
 
             return TextCommandResult.Success($"{playerName}'s Kill Goal: {wolfKillCount[playerName].Goal}.\n" +
                 $"Your kills: {wolfKillCount[playerName].Kills}");
