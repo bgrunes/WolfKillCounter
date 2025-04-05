@@ -2,6 +2,10 @@
 
 WolfKillCounter is a Vintage Story mod that enhances gameplay by tracking how many wolves each player has defeated. Every wolf killed (including wolf pups) is recorded, and players can easily view the top wolf hunters through an in-game leaderboard accessible via chat commands.
 
+# Version Compatibility (tested)
+1.20.7
+1.20.6
+
 # Main Features:
 Wolf Kill Tracking: Counts total wolf kills and tracks kills individually by player.
 
