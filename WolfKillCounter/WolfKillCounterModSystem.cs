@@ -125,17 +125,14 @@ namespace WolfKillCounter
         private void OnEntityDeath(Entity entity, DamageSource source)
         {
             // Debug logging for DamageSource
-            if (source == null)
+            if (source == null || (source.SourceEntity == null && source.CauseEntity == null))
             {
                 Mod.Logger.Debug("DamageSource is null for entity death.");
-            }
-            else
-            {
-                Mod.Logger.Debug($"DamageSource: SourceEntity={source.SourceEntity?.Code?.Path ?? "null"}, CauseEntity={source.CauseEntity?.Code?.Path ?? "null"}");
+                return;
             }
 
             if (entity.Code.Path.Contains("wolf"))
-            {
+            {   
                 totalWolfKillCount++;
                 string playerName = null;
                 EntityPlayer sourcePlayer = null;
@@ -186,20 +183,12 @@ namespace WolfKillCounter
                         wolfKillCount[playerName].Goal *= 2;
                     }
                 }
+
+                // Update Server description with Total Wolf kills
             }
-            else if (entity.Code.Path == "player" && entity is EntityPlayer player)
+            else if (source != null && entity.Code.Path == "player" && entity is EntityPlayer player && (source.SourceEntity.Code.Path.Contains("wolf") || source.CauseEntity.Code.Path.Contains("wolf")))
             {
                 string playerName = player.Player.PlayerName;
-
-                // Check if this player exists in the wolfKillCount dictionary
-                if (wolfKillCount.ContainsKey(playerName))
-                {
-                    wolfKillCount[playerName].Deaths++;
-                }
-                else
-                {
-                    wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 1 });
-                }
                     
                 Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
                 Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
@@ -211,15 +200,8 @@ namespace WolfKillCounter
                 }
 
                 // Check if the death was caused by a wolf
-                bool diedToWolf = source != null &&
-                                  ((source.SourceEntity != null && source.SourceEntity.Code.Path.Contains("wolf")) ||
-                                   (source.CauseEntity != null && source.CauseEntity.Code.Path.Contains("wolf")));
-
-                if (diedToWolf)
-                {
-                    wolfKillCount[playerName].Deaths++;
-                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
-                }
+                wolfKillCount[playerName].Deaths++;
+                Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
             }
         }
 
