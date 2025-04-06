@@ -112,6 +112,7 @@ namespace WolfKillCounter
 
             // Add function handler to trigger (function call) when an entity dies.
             api.Event.OnEntityDeath += OnEntityDeath;
+            api.Event.PlayerJoin += OnPlayerJoin;
             api.Event.SaveGameLoaded += LoadWolfKillData;
             api.Event.GameWorldSave += SaveWolfKillData;
         }
@@ -124,84 +125,103 @@ namespace WolfKillCounter
         // function handler to catch entity death event.
         private void OnEntityDeath(Entity entity, DamageSource source)
         {
-            // Debug logging for DamageSource
-            if (source == null || (source.SourceEntity == null && source.CauseEntity == null))
+            try
             {
-                Mod.Logger.Debug("DamageSource is null for entity death.");
-                return;
-            }
-
-            if (entity.Code.Path.Contains("wolf"))
-            {   
-                totalWolfKillCount++;
-                string playerName = null;
-                EntityPlayer sourcePlayer = null;
-
-                // Check for source of killer (should be a player), get their player name and increment their kill count.
-                if (source?.SourceEntity is EntityPlayer player)
+                // Debug logging for DamageSource
+                if (source == null || (source.SourceEntity == null && source.CauseEntity == null))
                 {
-                    playerName = player.Player.PlayerName;
-                    sourcePlayer = player;
-                }
-                else if (source?.CauseEntity is EntityPlayer causePlayer)
-                {
-                    playerName = causePlayer.Player.PlayerName;
+                    Mod.Logger.Debug("DamageSource is null for entity death.");
+                    return;
                 }
 
-                if (playerName != null)
+                if (entity.Code.Path.Contains("wolf"))
                 {
-                    if (wolfKillCount.ContainsKey(playerName))
+                    totalWolfKillCount++;
+                    string playerName = null;
+                    EntityPlayer sourcePlayer = null;
+
+                    // Check for source of killer (should be a player), get their player name and increment their kill count.
+                    if (source?.SourceEntity is EntityPlayer player)
                     {
-                        wolfKillCount[playerName].Kills++;
-                        if (currentLeaderboard.ContainsKey(playerName))
+                        playerName = player.Player.PlayerName;
+                        sourcePlayer = player;
+                    }
+                    else if (source?.CauseEntity is EntityPlayer causePlayer)
+                    {
+                        playerName = causePlayer.Player.PlayerName;
+                    }
+
+                    if (playerName != null)
+                    {
+                        if (wolfKillCount.ContainsKey(playerName))
                         {
-                            currentLeaderboard[playerName]++;
+                            wolfKillCount[playerName].Kills++;
+                            if (currentLeaderboard.ContainsKey(playerName))
+                            {
+                                currentLeaderboard[playerName]++;
+                            }
+                            else
+                            {
+                                currentLeaderboard.Add(playerName, 1);
+                            }
                         }
                         else
                         {
+                            wolfKillCount.Add(playerName, new KillCountData { Kills = 1, Goal = 50, Deaths = 0 });
                             currentLeaderboard.Add(playerName, 1);
                         }
-                    }
-                    else
-                    {
-                        wolfKillCount.Add(playerName, new KillCountData { Kills = 1, Goal = 50, Deaths = 0 });
-                        currentLeaderboard.Add(playerName, 1);
+
+                        // Check if the server kill goal has been reached and broadcast a message to all players.
+                        if (totalWolfKillCount == serverKillGoal)
+                        {
+                            BroadcastMessage(ServerKillGoal(serverKillGoal * 2));
+                            serverKillGoal *= 2;
+                        }
+
+                        // Check if the player has reached their personal kill goal and broadcast a message to all players.
+                        if (wolfKillCount[playerName].Kills == wolfKillCount[playerName].Goal)
+                        {
+                            int newGoal = CalculateGoal(wolfKillCount[playerName].Goal);
+                            BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer?.Player);
+                            wolfKillCount[playerName].Goal *= 2;
+                        }
                     }
 
-                    // Check if the server kill goal has been reached and broadcast a message to all players.
-                    if (totalWolfKillCount == serverKillGoal)
-                    {
-                        BroadcastMessage(ServerKillGoal(serverKillGoal * 2));
-                        serverKillGoal *= 2;
-                    }
-
-                    // Check if the player has reached their personal kill goal and broadcast a message to all players.
-                    if (wolfKillCount[playerName].Kills == wolfKillCount[playerName].Goal)
-                    {
-                        int newGoal = CalculateGoal(wolfKillCount[playerName].Goal);
-                        BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer?.Player);
-                        wolfKillCount[playerName].Goal *= 2;
-                    }
+                    // Update Server description with Total Wolf kills
                 }
-
-                // Update Server description with Total Wolf kills
-            }
-            else if (source != null && entity.Code.Path == "player" && entity is EntityPlayer player && (source.SourceEntity.Code.Path.Contains("wolf") || source.CauseEntity.Code.Path.Contains("wolf")))
-            {
-                string playerName = player.Player.PlayerName;
-                    
-                Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
-                Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
-                Mod.Logger.Notification($"Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
-                // Ensure the player is in the wolfKillCount dictionary
-                if (!wolfKillCount.ContainsKey(playerName))
+                else if (source != null && entity.Code.Path == "player" && entity is EntityPlayer player && (source.SourceEntity.Code.Path.Contains("wolf") || source.CauseEntity.Code.Path.Contains("wolf")))
                 {
-                    wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
-                }
+                    string playerName = player.Player.PlayerName;
 
-                // Check if the death was caused by a wolf
-                wolfKillCount[playerName].Deaths++;
-                Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
+                    Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
+                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
+                    Mod.Logger.Notification($"Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
+                    // Ensure the player is in the wolfKillCount dictionary
+                    if (!wolfKillCount.ContainsKey(playerName))
+                    {
+                        wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
+                    }
+
+                    // Check if the death was caused by a wolf
+                    wolfKillCount[playerName].Deaths++;
+                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
+                }
+            }
+            catch (Exception ex)
+            {
+                sapi.Logger.Error($"WolfKillCounter: Error in OnEntityDeath: {ex.Message}\n");
+            }
+        }
+
+        private void OnPlayerJoin(IServerPlayer player)
+        {
+            // Check if the player is already in the wolfKillCount dictionary
+            string playerName = player.PlayerName;
+
+            if (!wolfKillCount.ContainsKey(playerName))
+            {
+                wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
+                Mod.Logger.Notification($"{playerName} has been added to the Dictionary.\n");
             }
         }
 
