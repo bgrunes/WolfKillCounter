@@ -127,15 +127,15 @@ namespace WolfKillCounter
         {
             try
             {
-                // Debug logging for DamageSource
-                if (source == null || (source.SourceEntity == null && source.CauseEntity == null))
-                {
-                    Mod.Logger.Debug("DamageSource is null for entity death.");
-                    return;
-                }
-
                 if (entity.Code.Path.Contains("wolf"))
                 {
+                    // Debug logging for DamageSource
+                    if (source == null || (source.SourceEntity == null && source.CauseEntity == null))
+                    {
+                        Mod.Logger.Debug("DamageSource is null for entity death.");
+                        return;
+                    }
+
                     totalWolfKillCount++;
                     string playerName = null;
                     EntityPlayer sourcePlayer = null;
