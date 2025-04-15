@@ -316,7 +316,7 @@ namespace WolfKillCounter
             {
                 return "∞";
             }
-            kd =(double) (KDlist.Kills / KDlist.Deaths);
+            kd = ((double) KDlist.Kills / (double) KDlist.Deaths);
             return System.String.Format("{0:F2}", kd);
         }
 

@@ -1,4 +1,9 @@
 {
-  "version": "v1.1.0",
-  "category": "Wolf Kill Counter"
+  "game:tabname-wolfkillcounter": "Wolf Kill Counter",
+
+  "wolfkillcounter-title": "Wolf Kill Counter",
+
+  "wolfkillcounter-text": "This mod adds a counter that tracks the number of wolves you have killed. It is a simple and effective way to keep track of your progress in the game. The counter is updated in real-time, so you can see how many wolves you have killed at any given moment. The mod is easy to install and use, and it is compatible with most versions of the game."
+
+
 }
