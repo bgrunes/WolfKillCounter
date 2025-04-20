@@ -23,6 +23,7 @@ namespace WolfKillCounter
     {
         private ICoreServerAPI sapi;
         IServerNetworkChannel serverChannel;
+        WolfKillCounterConfig config;
 
         // List of players and their total wolf kills from the first startup of this mod.
         Dictionary<string, KillCountData> wolfKillCount = new Dictionary<string, KillCountData>();
@@ -44,7 +45,7 @@ namespace WolfKillCounter
             Mod.Logger.Notification(": " + Lang.Get("wolfkillcounter:version"));
             sapi = api;
             // Get ModSystem Config 
-            WolfKillCounterConfig config = new WolfKillCounterConfig();
+            config = new WolfKillCounterConfig();
 
             config.LoadWolfKillData(sapi);
             LoadLeaderboard();
@@ -249,11 +250,27 @@ namespace WolfKillCounter
             );
         }
 
-        // Getters
+        // Function to add a player to the dictionary
+        public void AddPlayer(string playerName, KillCountData data)
+        {
+            if (!wolfKillCount.ContainsKey(playerName))
+            {
+                wolfKillCount.Add(playerName, data);
+                Mod.Logger.Notification($"{playerName} has been added to the Dictionary.\n");
+            }
+        }
+
+        // Getters for External use
         public Dictionary<string, KillCountData> GetWolfKillCount() { return wolfKillCount; }
         public Dictionary<string, int> GetCurrentLeaderboard() { return currentLeaderboard; }
         public int GetTotalWolfKillCount() { return totalWolfKillCount; }
         public int GetServerKillGoal() { return serverKillGoal; }
+        public WolfKillCounterConfig GetConfig() { return config; }
 
+        // Setters for External use
+        public void SetWolfKillCount(Dictionary<string, KillCountData> newWolfKillCount) { wolfKillCount = newWolfKillCount; }
+        public void SetCurrentLeaderboard(Dictionary<string, int> newLeaderboard) { currentLeaderboard = newLeaderboard; }
+        public void SetTotalWolfKillCount(int newTotalWolfKillCount) { totalWolfKillCount = newTotalWolfKillCount; }
+        public void SetServerKillGoal(int newServerKillGoal) { serverKillGoal = newServerKillGoal; }
     }
 }
