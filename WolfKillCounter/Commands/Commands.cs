@@ -15,44 +15,48 @@ namespace WolfKillCounter.Commands
         private static ICoreServerAPI sapi;
         public static void RegisterCommands(ICoreServerAPI api)
         {
-            sapi = api;
 
             // List Leaderboard Command
-            sapi.ChatCommands.Create("wkc")
+            api.ChatCommands.Create("wkc")
                 .WithDescription("Provides the Wolf Kill Counter commands")
                 .RequiresPrivilege(Privilege.chat)
-                .HandleWith(args => HandleWKCCommand(args, sapi))
+                .HandleWith(args => HandleWKCCommand(args, api))
                 // List Wolf Kills Subcommand
                 .BeginSubCommand("listWolfKills")
                 .WithDescription("List the top 5 wolf killers")
                 .RequiresPrivilege(Privilege.chat)
                 .WithAlias("lwk")
-                .HandleWith(args => ListWolfKills(args, sapi))
+                .HandleWith(args => ListWolfKills(args, api))
                 .EndSubCommand()
                 // Reset Leaderboard Command
                 .BeginSubCommand("resetWolfLeaderboard")
                 .WithDescription("Resets wolf leaderboard without affecting total kills.")
                 .RequiresPrivilege(Privilege.controlserver)
-                .HandleWith(args => ResetLeaderboardCommand(args, sapi))
+                .HandleWith(args => ResetLeaderboardCommand(args, api))
                 .EndSubCommand()
                 // Display Server Goal Command
                 .BeginSubCommand("serverKillGoal")
                 .WithDescription("Displays the server's kill goal.")
                 .RequiresPrivilege(Privilege.chat)
                 .WithAlias("skg")
-                .HandleWith(args => DisplayServerGoal(args, sapi))
+                .HandleWith(args => DisplayServerGoal(args, api))
                 .EndSubCommand()
                 // Display Player Goal Command
                 .BeginSubCommand("playerKillGoal")
                 .WithDescription("Displays your kill goal.")
                 .RequiresPrivilege(Privilege.chat)
                 .WithAlias("pkg")
-                .HandleWith(args => DisplayPlayerGoal(args, sapi))
+                .HandleWith(args => DisplayPlayerGoal(args, api))
                 .EndSubCommand();
         }
 
+        private static TextCommandResult HandleWKCCommand(TextCommandCallingArgs args, ICoreServerAPI api)
+        {
+            throw new NotImplementedException();
+        }
+
         // Command function to print the Wolf Kills Leaderboard
-        private TextCommandResult ListWolfKills(TextCommandCallingArgs args, ICoreServerAPI api)
+        private static TextCommandResult ListWolfKills(TextCommandCallingArgs args, ICoreServerAPI api)
         {
 
             string playerName = args.Caller.Player.PlayerName;
@@ -62,7 +66,7 @@ namespace WolfKillCounter.Commands
         }
 
         // Command function to reset the Wolf Kills Leaderboard
-        private TextCommandResult ResetLeaderboardCommand(TextCommandCallingArgs args, ICoreServerAPI api)
+        private static TextCommandResult ResetLeaderboardCommand(TextCommandCallingArgs args, ICoreServerAPI api)
         {
             WolfKillCounterModSystem modSystem = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
             modSystem.SetCurrentLeaderboard(new Dictionary<string, int>());
@@ -73,7 +77,7 @@ namespace WolfKillCounter.Commands
             return TextCommandResult.Success("Wolf kill leaderboard has been reset. Total kill count remains unchanged.");
         }
 
-        private TextCommandResult DisplayServerGoal(TextCommandCallingArgs args, ICoreServerAPI api)
+        private static TextCommandResult DisplayServerGoal(TextCommandCallingArgs args, ICoreServerAPI api)
         {
             WolfKillCounterModSystem modSystem = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
 
@@ -81,7 +85,7 @@ namespace WolfKillCounter.Commands
                 $"Server's Total Kills: {modSystem.GetTotalWolfKillCount()}");
         }
 
-        private TextCommandResult DisplayPlayerGoal(TextCommandCallingArgs args, ICoreServerAPI api)
+        private static TextCommandResult DisplayPlayerGoal(TextCommandCallingArgs args, ICoreServerAPI api)
         {
             WolfKillCounterModSystem modSystem = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
             var wolfKillCount = modSystem.GetWolfKillCount();
@@ -100,7 +104,7 @@ namespace WolfKillCounter.Commands
         }
 
         // Helper function to create the list string by sorting the dictionary and iterating through the top 5 elements in sortedDict.
-        private string PrintList(string playerName)
+        private static string PrintList(string playerName)
         {
             WolfKillCounterModSystem modSystem = sapi.ModLoader.GetModSystem<WolfKillCounterModSystem>();
             Dictionary<string, KillCountData> wolfKillCount = modSystem.GetWolfKillCount();
