@@ -131,7 +131,7 @@ namespace WolfKillCounter.Commands
         }
 
         // Helper function to get the top 5 players from the current leaderboard
-        private Dictionary<string, int> GetTopFive(Dictionary<string, int> leaderboard)
+        private static Dictionary<string, int> GetTopFive(Dictionary<string, int> leaderboard)
         {
             return leaderboard.OrderByDescending(x => x.Value).Take(5).ToDictionary(x => x.Key, x => x.Value);
         }
