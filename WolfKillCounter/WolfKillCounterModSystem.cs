@@ -1,18 +1,10 @@
-﻿using Microsoft.Win32.SafeHandles;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using Vintagestory.API.Util;
-using ProtoBuf;
 using WolfKillCounter.Config;
 
 namespace WolfKillCounter
