@@ -1,19 +1,12 @@
-﻿using Microsoft.Win32.SafeHandles;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using Vintagestory.API.Util;
-using ProtoBuf;
 using WolfKillCounter.Config;
+using WolfKillCounter.Commands;
 
 namespace WolfKillCounter
 {
@@ -24,14 +17,7 @@ namespace WolfKillCounter
         private ICoreServerAPI sapi;
         IServerNetworkChannel serverChannel;
         WolfKillCounterConfig config;
-
-        // List of players and their total wolf kills from the first startup of this mod.
-        Dictionary<string, KillCountData> wolfKillCount = new Dictionary<string, KillCountData>();
-        Dictionary<string, int> currentLeaderboard = new Dictionary<string, int>();
-        int totalWolfKillCount = 0;
-
-        // Server kill goal
-        int serverKillGoal = 0;
+        public WolfKillData Data;
         
         // Called on server and client
         // Useful for registering block/entity classes on both sides
@@ -45,17 +31,19 @@ namespace WolfKillCounter
             Mod.Logger.Notification(": " + Lang.Get("wolfkillcounter:version"));
             sapi = api;
             // Get ModSystem Config 
-            config = new WolfKillCounterConfig();
+            config = new WolfKillCounterConfig(api);
 
-            config.LoadWolfKillData(sapi);
-            LoadLeaderboard();
+            config.LoadWolfKillData(ref Data);
+            //LoadLeaderboard();
 
             // Add function handler to trigger (function call) when an entity dies.
             api.Event.OnEntityDeath += OnEntityDeath;
             api.Event.PlayerJoin += OnPlayerJoin;
             // Update the event subscription to use a lambda function that calls the LoadWolfKillData method
-            api.Event.SaveGameLoaded += () => config.LoadWolfKillData(sapi);
-            api.Event.GameWorldSave += () => config.SaveWolfKillData(sapi);
+            //api.Event.SaveGameLoaded += config.LoadWolfKillData;
+            api.Event.GameWorldSave += config.SaveWolfKillData;
+            
+            Commands.Commands.RegisterCommands(api);
         }
 
         //public override void StartClientSide(ICoreClientAPI api)
@@ -77,7 +65,7 @@ namespace WolfKillCounter
                         return;
                     }
 
-                    totalWolfKillCount++;
+                    Data.TotalKills++;
                     string playerName = null;
                     EntityPlayer sourcePlayer = null;
 
@@ -94,37 +82,37 @@ namespace WolfKillCounter
 
                     if (playerName != null)
                     {
-                        if (wolfKillCount.ContainsKey(playerName))
+                        if (Data.NewKillCounts.TryGetValue(playerName, out var count))
                         {
-                            wolfKillCount[playerName].Kills++;
-                            if (currentLeaderboard.ContainsKey(playerName))
+                            count.Kills++;
+                            if (Data.Leaderboard.ContainsKey(playerName))
                             {
-                                currentLeaderboard[playerName]++;
+                                Data.Leaderboard[playerName]++;
                             }
                             else
                             {
-                                currentLeaderboard.Add(playerName, 1);
+                                Data.Leaderboard.Add(playerName, 1);
                             }
                         }
                         else
                         {
-                            wolfKillCount.Add(playerName, new KillCountData { Kills = 1, Goal = 50, Deaths = 0 });
-                            currentLeaderboard.Add(playerName, 1);
+                            Data.NewKillCounts.Add(playerName, new KillCountData { Kills = 1, Goal = 50, Deaths = 0 });
+                            Data.Leaderboard.Add(playerName, 1);
                         }
 
                         // Check if the server kill goal has been reached and broadcast a message to all players.
-                        if (totalWolfKillCount == serverKillGoal)
+                        if (Data.TotalKills == Data.ServerKillGoal)
                         {
-                            BroadcastMessage(ServerKillGoal(serverKillGoal * 2));
-                            serverKillGoal *= 2;
+                            BroadcastMessage(ServerKillGoal(Data.ServerKillGoal * 2));
+                            Data.ServerKillGoal *= 2;
                         }
 
                         // Check if the player has reached their personal kill goal and broadcast a message to all players.
-                        if (wolfKillCount[playerName].Kills == wolfKillCount[playerName].Goal)
+                        if (Data.NewKillCounts[playerName].Kills == Data.NewKillCounts[playerName].Goal)
                         {
-                            int newGoal = CalculateGoal(wolfKillCount[playerName].Goal);
+                            int newGoal = CalculateGoal(Data.NewKillCounts[playerName].Goal);
                             BroadcastMessage(PlayerKillGoal(playerName, newGoal), sourcePlayer?.Player);
-                            wolfKillCount[playerName].Goal *= 2;
+                            Data.NewKillCounts[playerName].Goal *= 2;
                         }
                     }
 
@@ -134,18 +122,18 @@ namespace WolfKillCounter
                 {
                     string playerName = player.Player.PlayerName;
 
-                    Mod.Logger.Notification("" + wolfKillCount[playerName].Deaths);
+                    Mod.Logger.Notification("" + Data.NewKillCounts[playerName].Deaths);
                     Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue.\n");
-                    Mod.Logger.Notification($"Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
+                    Mod.Logger.Notification($"Total deaths to wolves: {Data.NewKillCounts[playerName].Deaths}");
                     // Ensure the player is in the wolfKillCount dictionary
-                    if (!wolfKillCount.ContainsKey(playerName))
+                    if (!Data.NewKillCounts.ContainsKey(playerName))
                     {
-                        wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
+                        Data.NewKillCounts.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
                     }
 
                     // Check if the death was caused by a wolf
-                    wolfKillCount[playerName].Deaths++;
-                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {wolfKillCount[playerName].Deaths}");
+                    Data.NewKillCounts[playerName].Deaths++;
+                    Mod.Logger.Notification($"{playerName} has died to a Wolf! Skill Issue. Total deaths to wolves: {Data.NewKillCounts[playerName].Deaths}");
                 }
             }
             catch (Exception ex)
@@ -159,9 +147,9 @@ namespace WolfKillCounter
             // Check if the player is already in the wolfKillCount dictionary
             string playerName = player.PlayerName;
 
-            if (!wolfKillCount.ContainsKey(playerName))
+            if (!Data.NewKillCounts.ContainsKey(playerName))
             {
-                wolfKillCount.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
+                Data.NewKillCounts.Add(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
                 Mod.Logger.Notification($"{playerName} has been added to the Dictionary.\n");
             }
         }
@@ -184,35 +172,36 @@ namespace WolfKillCounter
             // If the player has not died to a wolf yet, no KD.
             if (KDlist.Deaths == 0)
             {
-                return "∞";
+                return "INFINITE";
             }
             kd = ((double) KDlist.Kills / (double) KDlist.Deaths);
             return System.String.Format("{0:F2}", kd);
         }  
 
-        private void LoadLeaderboard()
-        {
-            if (sapi.LoadModConfig<WolfKillData>("wolfkills.json") is WolfKillData data)
-            {
-                currentLeaderboard = data.Leaderboard ?? wolfKillCount
-                    .OrderByDescending(x => x.Value.Kills) // Use kills (index 0) for sorting
-                    .Take(5)
-                    .ToDictionary(x => x.Key, x => x.Value.Kills); // Use kills (index 0) as value
-                sapi.Logger.Notification("WolfKillCounter: Loaded saved leaderboard data.");
-            }
-            else
-            {
-                currentLeaderboard = new Dictionary<string, int>();
-                sapi.Logger.Notification("WolfKillCounter: No existing leaderboard data found. Starting fresh.");
-            }
-        }
+        // Likely unnecessary now, but commented out just in case.
+        // private void LoadLeaderboard()
+        // {
+        //     if (sapi.LoadModConfig<WolfKillData>("wolfkills.json") is WolfKillData data)
+        //     {
+        //         currentLeaderboard = data.Leaderboard ?? wolfKillCount
+        //             .OrderByDescending(x => x.Value.Kills) // Use kills (index 0) for sorting
+        //             .Take(5)
+        //             .ToDictionary(x => x.Key, x => x.Value.Kills); // Use kills (index 0) as value
+        //         sapi.Logger.Notification("WolfKillCounter: Loaded saved leaderboard data.");
+        //     }
+        //     else
+        //     {
+        //         currentLeaderboard = new Dictionary<string, int>();
+        //         sapi.Logger.Notification("WolfKillCounter: No existing leaderboard data found. Starting fresh.");
+        //     }
+        // }
 
         // Function to check if total server kills reached a certain point
         private string ServerKillGoal(int newGoal)
         {
             string message = " *** WOLF SLAYERS UNITE! ***\n";
             message += "  -----------------------------------\n";
-            message += $"| {serverKillGoal} reached!            |\n";
+            message += $"| {Data.ServerKillGoal} reached!            |\n";
             message +=  "| Server Pack Triumphs!             |\n";
             message += $"| New server goal: {newGoal} kills!  |\n";
             message += "  -----------------------------------\n";
@@ -253,24 +242,24 @@ namespace WolfKillCounter
         // Function to add a player to the dictionary
         public void AddPlayer(string playerName, KillCountData data)
         {
-            if (!wolfKillCount.ContainsKey(playerName))
+            if (!Data.NewKillCounts.ContainsKey(playerName))
             {
-                wolfKillCount.Add(playerName, data);
+                Data.NewKillCounts.Add(playerName, data);
                 Mod.Logger.Notification($"{playerName} has been added to the Dictionary.\n");
             }
         }
 
         // Getters for External use
-        public Dictionary<string, KillCountData> GetWolfKillCount() { return wolfKillCount; }
-        public Dictionary<string, int> GetCurrentLeaderboard() { return currentLeaderboard; }
-        public int GetTotalWolfKillCount() { return totalWolfKillCount; }
-        public int GetServerKillGoal() { return serverKillGoal; }
+        public Dictionary<string, KillCountData> GetWolfKillCount() { return Data.NewKillCounts; }
+        public Dictionary<string, int> GetCurrentLeaderboard() { return Data.Leaderboard; }
+        public int GetTotalWolfKillCount() { return Data.TotalKills; }
+        public int GetServerKillGoal() { return Data.ServerKillGoal; }
         public WolfKillCounterConfig GetConfig() { return config; }
 
         // Setters for External use
-        public void SetWolfKillCount(Dictionary<string, KillCountData> newWolfKillCount) { wolfKillCount = newWolfKillCount; }
-        public void SetCurrentLeaderboard(Dictionary<string, int> newLeaderboard) { currentLeaderboard = newLeaderboard; }
-        public void SetTotalWolfKillCount(int newTotalWolfKillCount) { totalWolfKillCount = newTotalWolfKillCount; }
-        public void SetServerKillGoal(int newServerKillGoal) { serverKillGoal = newServerKillGoal; }
+        public void SetWolfKillCount(Dictionary<string, KillCountData> newWolfKillCount) { Data.NewKillCounts = newWolfKillCount; }
+        public void SetCurrentLeaderboard(Dictionary<string, int> newLeaderboard) { Data.Leaderboard = newLeaderboard; }
+        public void SetTotalWolfKillCount(int newTotalWolfKillCount) { Data.TotalKills = newTotalWolfKillCount; }
+        public void SetServerKillGoal(int newServerKillGoal) { Data.ServerKillGoal = newServerKillGoal; }
     }
 }
