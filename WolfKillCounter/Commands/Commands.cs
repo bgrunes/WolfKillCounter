@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
-using Vintagestory.Common;
 using WolfKillCounter.Config;
 
 namespace WolfKillCounter.Commands
@@ -15,12 +11,11 @@ namespace WolfKillCounter.Commands
         private static ICoreServerAPI sapi;
         public static void RegisterCommands(ICoreServerAPI api)
         {
-
+            sapi = api;
             // List Leaderboard Command
             api.ChatCommands.Create("wkc")
                 .WithDescription("Provides the Wolf Kill Counter commands")
                 .RequiresPrivilege(Privilege.chat)
-                .HandleWith(args => HandleWKCCommand(args, api))
                 // List Wolf Kills Subcommand
                 .BeginSubCommand("listWolfKills")
                 .WithDescription("List the top 5 wolf killers")
@@ -50,15 +45,9 @@ namespace WolfKillCounter.Commands
                 .EndSubCommand();
         }
 
-        private static TextCommandResult HandleWKCCommand(TextCommandCallingArgs args, ICoreServerAPI api)
-        {
-            throw new NotImplementedException();
-        }
-
         // Command function to print the Wolf Kills Leaderboard
         private static TextCommandResult ListWolfKills(TextCommandCallingArgs args, ICoreServerAPI api)
         {
-
             string playerName = args.Caller.Player.PlayerName;
             api.Logger.Notification($"{playerName}: Printing Wolf Kill List Top 5");
 
@@ -66,18 +55,18 @@ namespace WolfKillCounter.Commands
         }
 
         // Command function to reset the Wolf Kills Leaderboard
-        private static TextCommandResult ResetLeaderboardCommand(TextCommandCallingArgs args, ICoreServerAPI api)
+        private static TextCommandResult ResetLeaderboardCommand(TextCommandCallingArgs _, ICoreServerAPI api)
         {
             WolfKillCounterModSystem modSystem = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
             modSystem.SetCurrentLeaderboard(new Dictionary<string, int>());
-            modSystem.GetConfig().SaveWolfKillData(api);
+            modSystem.GetConfig().SaveWolfKillData();
 
             api.Logger.Notification("[WolfKillCounter] Resetting leaderboard.");
 
             return TextCommandResult.Success("Wolf kill leaderboard has been reset. Total kill count remains unchanged.");
         }
 
-        private static TextCommandResult DisplayServerGoal(TextCommandCallingArgs args, ICoreServerAPI api)
+        private static TextCommandResult DisplayServerGoal(TextCommandCallingArgs _, ICoreServerAPI api)
         {
             WolfKillCounterModSystem modSystem = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
 
@@ -96,7 +85,7 @@ namespace WolfKillCounter.Commands
             if (wolfKillCount.ContainsKey(playerName))
             {
                 modSystem.AddPlayer(playerName, new KillCountData { Kills = 0, Goal = 50, Deaths = 0 });
-                modSystem.GetConfig().SaveWolfKillData(api);
+                modSystem.GetConfig().SaveWolfKillData();
             }
 
             return TextCommandResult.Success($"{playerName}'s Kill Goal: {modSystem.GetWolfKillCount()[playerName].Goal}.\n" +

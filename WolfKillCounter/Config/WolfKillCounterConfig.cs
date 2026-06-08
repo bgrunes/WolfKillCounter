@@ -1,9 +1,6 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -25,11 +22,11 @@ namespace WolfKillCounter.Config
     [ProtoContract]
     public class WolfKillData
     {
-        // Players and their wolf kill counts
+        // Players and their wolf kill counts (OUTDATED)
         [ProtoMember(1)]
         public Dictionary<string, int> KillCounts { get; set; } = new Dictionary<string, int>();
 
-        // Old Dictionary format, REFORMAT USE ONLY
+        // New Format
         [ProtoMember(2)]
         public Dictionary<string, KillCountData> NewKillCounts { get; set; } = new Dictionary<string, KillCountData>();
 
@@ -44,118 +41,47 @@ namespace WolfKillCounter.Config
         [ProtoMember(5)]
         public int ServerKillGoal { get; set; } = 100;
     }
-    public class WolfKillCounterConfig
+    public class WolfKillCounterConfig(ICoreServerAPI api)
     {
-        ICoreServerAPI sapi;
-        
-        private string SaveFilePath => sapi.GetOrCreateDataPath("wolfkills.json");
+
+        //private string SaveFilePath => api.GetOrCreateDataPath("wolfkills.json");
         // Load the saved data from the json file
-        public WolfKillData LoadWolfKillData(ICoreServerAPI api)
+        public void LoadWolfKillData(ref WolfKillData data)
         {
-            sapi = api;
-            
-            // If the old json file exists, get the data and switch to new saving format
-            if (api.LoadModConfig("wolfkills.json") != null)
-            {
-                // Get Mod System
-                WolfKillCounterModSystem wolfKillCounter = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
-
-                // Get the file data
-                var data = api.LoadModConfig<WolfKillData>("wolfkills.json");
-                
-                // Load Leaderboard and TotalKills
-                var currentLeaderboard = data.Leaderboard;
-                var totalWolfKillCount = data.TotalKills;
-                var serverKillGoal = wolfKillCounter.CalculateGoal(totalWolfKillCount);
-
-                Dictionary<string, KillCountData> wolfKillCount = new Dictionary<string, KillCountData>();
-                // Load KillCounts from the old format and convert it to the new format
-                if (data.KillCounts != null)
-                {
-                    foreach (var kvp in data.KillCounts)
-                    {
-                        wolfKillCount.Add(kvp.Key, new KillCountData { Kills = kvp.Value, Goal = wolfKillCounter.CalculateGoal((int)kvp.Value), Deaths = 0 });
-                    }
-                }
-
-                api.Logger.Notification("[WolfKillCounter]: KillCounts parsed and migrated if needed.");
-
-                // Try to Delete the JSON file, otherwise Error.
-                try
-                {
-                    System.IO.File.Delete(SaveFilePath);
-                    api.Logger.Notification("[WolfKillCounter]: Deleted old json file for SaveData Migration.");
-                }
-                catch (Exception)
-                {
-                    api.Logger.Error($"[WolfKillCounter] - Error: File not deleted! Make sure the JSON file is manually deleted.\n");
-                }
-
-                WolfKillData loadData = new WolfKillData()
-                {
-                    NewKillCounts = wolfKillCount,
-                    Leaderboard = currentLeaderboard,
-                    TotalKills = totalWolfKillCount,
-                    ServerKillGoal = serverKillGoal
-                };
-
-                api.Logger.Notification("[WolfKillCounter]: Save Loaded.");
-                return loadData;
-                
-            }
-            // New SaveGame format if data exists already, get and load the data
-            else if (api.WorldManager.SaveGame.GetData("wolfkilldata") is Byte[] rawData)
-            {
-                // Read raw JSON from the file
-                rawData = api.WorldManager.SaveGame.GetData("wolfkilldata");
-                // Replace the line causing the error with the following line
-                WolfKillData parsedData = rawData == null ? new WolfKillData() : SerializerUtil.Deserialize<WolfKillData>(rawData);
-
-                // Load TotalKills and ServerKillGoal
-                var totalWolfKillCount = parsedData.TotalKills;
-                var serverKillGoal = parsedData.ServerKillGoal;
-
-                // Load Leaderboard
-                var currentLeaderboard = parsedData.Leaderboard;
-
-                // Load KillCounts with backward compatibility for the old format
-                var wolfKillCount = parsedData.NewKillCounts;
-
-                var loadData = new WolfKillData()
-                {
-                    NewKillCounts = wolfKillCount,
-                    Leaderboard = currentLeaderboard,
-                    TotalKills = totalWolfKillCount,
-                    ServerKillGoal = serverKillGoal
-                };
-
-                api.Logger.Notification("[WolfKillCounter]: Save Loaded.");
-                return loadData;
-            }
-            // No SaveGame data exists, create new save data
-            else
+            // Create new data if none exists
+            if (api.WorldManager.SaveGame.GetData("wolfkilldata") is null)
             {
                 // Fresh WolfKillData
-                var loadData = new WolfKillData()
-                {
-                    NewKillCounts = new Dictionary<string, KillCountData>(),
-                    Leaderboard = new Dictionary<string, int>(),
-                    TotalKills = 0,
-                    ServerKillGoal = 100
-                };
+                data = new WolfKillData() { };
 
                 // Store the fresh data
-                api.WorldManager.SaveGame.StoreData("wolfkilldata", loadData);
+                api.WorldManager.SaveGame.StoreData("wolfkilldata", data);
                 api.Logger.Notification("[WolfKillCounter]: Created new save data in SaveGame");
 
                 api.Logger.Notification("[WolfKillCounter]: Save Loaded.");
-                return loadData;
+                return;
             }
+            
+            // New SaveGame format if data exists already, get and load the data
+            // Read raw JSON from the file
+            byte[] rawData = api.WorldManager.SaveGame.GetData("wolfkilldata");
+            // Replace the line causing the error with the following line
+            WolfKillData parsedData = rawData == null ? new WolfKillData() : SerializerUtil.Deserialize<WolfKillData>(rawData);
+
+            data = new WolfKillData()
+            {
+                NewKillCounts = parsedData.NewKillCounts,
+                Leaderboard = parsedData.Leaderboard,
+                TotalKills = parsedData.TotalKills,
+                ServerKillGoal = parsedData.ServerKillGoal,
+            };
+
+            api.Logger.Notification("[WolfKillCounter]: Save Loaded.");
 
         }
 
         // Save the current kill data to the json file
-        public void SaveWolfKillData(ICoreServerAPI api)
+        public void SaveWolfKillData()
         {
             WolfKillCounterModSystem modSystem = api.ModLoader.GetModSystem<WolfKillCounterModSystem>();
             
